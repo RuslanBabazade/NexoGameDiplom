@@ -1,61 +1,41 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
-import { generateToken } from "../utils/generateToken.js";
+import jwt from "jsonwebtoken";
 
-export const register = async (req, res) => {
+export const register = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
-    console.log("REQ BODY:", req.body);
-
-    const userExists = await User.findOne({ email });
-    if (userExists)
-      return res.status(400).json({ message: "Email artıq mövcuddur" });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await User.create({
-      username,
-      email,
-      password: hashedPassword,
-    });
-
-    const token = generateToken(newUser._id);
-
-    res.status(201).json({
-      _id: newUser._id,
-      username: newUser.username,
-      email: newUser.email,
-      role: newUser.role,
-      token,
-    });
+    const { name, email, password } = req.body;
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: "Email already in use" });
+    const hashed = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashed });
+    await newUser.save();
+    res.status(201).json({ message: "User created" });
   } catch (err) {
-    res.status(500).json({ message: "Server xətası" });
-    console.error("Register error:", err);
+    next(err);
   }
 };
 
-export const login = async (req, res) => {
+export const logout = (req, res) => {
+  res.cookie('token', '', {
+    httpOnly: true,
+    expires: new Date(0)
+  })
+
+  res.status(200).json({ message: 'Logged out successfully' })
+}
+
+export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ message: "İstifadəçi tapılmadı" });
-
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Şifrə yalnışdır" });
-
-    const token = generateToken(user._id);
-
-    res.json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      token,
-    });
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
-    res.status(500).json({ message: "Server xətası" });
+    next(err);
   }
+  
 };
