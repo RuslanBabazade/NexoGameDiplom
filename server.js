@@ -1,36 +1,38 @@
-import express from "express";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import cors from "cors";
-import morgan from 'morgan';
-import cookieParser from "cookie-parser";
-import authRoutes from "./routes/authRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import productRoutes from "./routes/productRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import passport from 'passport';
-import session from 'express-session';
-import './config/passport.js';
+const express = require('express');
+const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const session = require('express-session');
+const passport = require('passport');
+const connectDB = require('./config/db');
+require('./config/passport'); // OAuth setup
+
 dotenv.config();
+connectDB();
+
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+// Middlewares
+app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
-app.use(morgan("dev"));
-
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/products", productRoutes); 
-app.use("/api/orders", orderRoutes);
-app.use(session({ secret: 'yourSecret', resave: false, saveUninitialized: false }));
+app.use(session({
+  secret: process.env.JWT_SECRET,
+  resave: false,
+  saveUninitialized: false,
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB Connected");
-    app.listen(5000, () => console.log("Backend run"));
-  })
-  .catch((err) => console.error("MongoDB connection error:", err));
+// Routes
+app.get('/', (req, res) => {
+  res.send('🎮 NexoGame Backend is Running');
+});
+
+// TODO: route files buraya import ediləcək
+
+// Error handler middleware sonra əlavə olunacaq
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server ${PORT} portunda işə düşdü`);
+});
