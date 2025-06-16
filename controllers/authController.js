@@ -1,41 +1,35 @@
-import User from "../models/User.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt from 'jsonwebtoken';
+import User from '../models/userModel.js';
 
-export const register = async (req, res, next) => {
-  try {
-    const { name, email, password } = req.body;
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ message: "Email already in use" });
-    const hashed = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, email, password: hashed });
-    await newUser.save();
-    res.status(201).json({ message: "User created" });
-  } catch (err) {
-    next(err);
-  }
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
-export const logout = (req, res) => {
-  res.cookie('token', '', {
-    httpOnly: true,
-    expires: new Date(0)
-  })
+export const registerUser = async (req, res) => {
+  const { name, email, password } = req.body;
+  const userExists = await User.findOne({ email });
+  if (userExists) return res.status(400).json({ message: 'Bu email artıq istifadə olunur.' });
 
-  res.status(200).json({ message: 'Logged out successfully' })
-}
+  const user = await User.create({ name, email, password });
+  res.status(201).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    token: generateToken(user._id),
+  });
+};
 
-export const login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
-  } catch (err) {
-    next(err);
+export const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user || !(await user.matchPassword(password))) {
+    return res.status(401).json({ message: 'Email və ya şifrə yanlışdır.' });
   }
-  
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    token: generateToken(user._id),
+  });
 };

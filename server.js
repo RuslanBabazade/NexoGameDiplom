@@ -1,14 +1,23 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const session = require('express-session');
-const passport = require('passport');
-const connectDB = require('./config/db');
-require('./config/passport'); // OAuth setup
-
+import dotenv from 'dotenv';
 dotenv.config();
-connectDB();
+console.log('✅ ENV TEST:', process.env.GOOGLE_CLIENT_ID);
+
+
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import session from 'express-session';
+import passport from 'passport';
+
+import connectDB from './config/config.js';
+connectDB(); // MongoDB bağlantısı
+
+import './config/passport.js'; // dotenv-dən sonra gəlməlidir
+
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import basketRoutes from './routes/basketRoutes.js';
 
 const app = express();
 
@@ -24,13 +33,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/basket', basketRoutes);
+
 app.get('/', (req, res) => {
   res.send('🎮 NexoGame Backend is Running');
 });
-
-// TODO: route files buraya import ediləcək
-
-// Error handler middleware sonra əlavə olunacaq
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
