@@ -1,35 +1,52 @@
-import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+// Token generasiya edən funksiya
+const generateToken = (user) => {
+  return jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: '7d',
+  });
 };
 
-export const registerUser = async (req, res) => {
+// Qeydiyyat funksiyası
+export const register = async (req, res) => {
   const { name, email, password } = req.body;
-  const userExists = await User.findOne({ email });
-  if (userExists) return res.status(400).json({ message: 'Bu email artıq istifadə olunur.' });
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: 'İstifadəçi artıq mövcuddur' });
 
-  const user = await User.create({ name, email, password });
-  res.status(201).json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    token: generateToken(user._id),
-  });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hashedPassword });
+
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user),
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server xətası baş verdi' });
+  }
 };
 
-export const loginUser = async (req, res) => {
+// Giriş funksiyası
+export const login = async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user || !(await user.matchPassword(password))) {
-    return res.status(401).json({ message: 'Email və ya şifrə yanlışdır.' });
-  }
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Email və ya şifrə yanlışdır' });
 
-  res.json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    token: generateToken(user._id),
-  });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Email və ya şifrə yanlışdır' });
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user),
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server xətası baş verdi' });
+  }
 };
