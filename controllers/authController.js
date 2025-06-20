@@ -35,10 +35,10 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Email və ya şifrə yanlışdır' });
+    if (!user) return res.status(400).json({ message: 'İstifadəçi tapılmadı' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Email və ya şifrə yanlışdır' });
+    const isMatch = await user.matchPassword(password); // BAX BURDA DƏYİŞDİK
+    if (!isMatch) return res.status(400).json({ message: 'Email və ya şifrə yalnışdır' });
 
     res.status(200).json({
       _id: user._id,
@@ -47,6 +47,6 @@ export const login = async (req, res) => {
       token: generateToken(user),
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server xətası baş verdi' });
+    res.status(500).json({ message: 'Server xətası' });
   }
 };

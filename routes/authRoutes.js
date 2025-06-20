@@ -1,29 +1,26 @@
 import express from 'express';
-import passport from 'passport';
-import { registerUser, loginUser } from '../controllers/authController.js';
+import {
+  getUserProfile,
+  updateUserProfile,
+  getAllUsers,
+  deleteUser,
+  updateUserRole,
+} from '../controllers/userController.js';
+
+import { protect, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.route('/profile')
+  .get(protect, getUserProfile)
+  .put(protect, updateUserProfile);
 
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+// Admin funksiyalar
+router.route('/')
+  .get(protect, isAdmin, getAllUsers);
 
-
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-
-router.get(
-  '/google/callback',
-  passport.authenticate('google', {
-    failureRedirect: '/login',
-    session: true,
-  }),
-  (req, res) => {
-    res.redirect('http://localhost:3000/home');
-  }
-);
+router.route('/:id')
+  .delete(protect, isAdmin, deleteUser)
+  .put(protect, isAdmin, updateUserRole);
 
 export default router;
